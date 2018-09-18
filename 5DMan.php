@@ -58,6 +58,7 @@ function CreateDatabase($conn, $databaseName)
         value LONGTEXT,
         source int,
         target int,
+        isScript tinyint(1),
         CONSTRAINT transfer_computers_id_fk FOREIGN KEY (source) REFERENCES computers (id),
         CONSTRAINT transfer_computers_id_fk_2 FOREIGN KEY (source) REFERENCES computers (id)
     );");
@@ -121,18 +122,18 @@ function RegisterComputer($conn)
 function GetComputerTransfer($sourceId, $conn)
 {
     $resultStr = "";
-    $result = $conn->query("SELECT transfers.value as value, computers.label as sourceLabel FROM transfers, computers WHERE transfers.target = $sourceId AND computers.id = transfers.source;");
+    $result = $conn->query("SELECT transfers.value as value, transfers.isScript as isScript, computers.label as sourceLabel FROM transfers, computers WHERE transfers.target = $sourceId AND computers.id = transfers.source;");
     if ($result->num_rows > 0) {
         // output data of each row
-        while($row = $result->fetch_assoc()) {
+        while ($row = $result->fetch_assoc()) {
 
             // Parse value to lua string.
             $value = str_replace("\"", "\\\"", $row["value"]); // " -> \"
 
-            $resultStr .= "{source = \"".$row["sourceLabel"]."\", value=\"".$value."\"},";
+            $resultStr .= "{source = \"" . $row["sourceLabel"] . "\", value=\"" . $value . "\", isScript=" . $row["isScript"] == 1 ? "true" : "false" . "},";
         }
         // Remove last ","
-        $resultStr = substr($resultStr, 0, strlen($resultStr)-1);
+        $resultStr = substr($resultStr, 0, strlen($resultStr) - 1);
 
         // Delete fetched transfers.
         $conn->query("DELETE FROM transfers WHERE target = $sourceId");
@@ -140,7 +141,7 @@ function GetComputerTransfer($sourceId, $conn)
     return $resultStr;
 }
 
-function WriteTransfer($sourceId, $conn)
+function WriteTransfer($sourceId, $conn, $isScript)
 {
     // Not every parameter given -> die;
     if (!(isset($_GET["TargetLabel"]) && isset($_GET["Value"]))) {
@@ -160,7 +161,7 @@ function WriteTransfer($sourceId, $conn)
     $targetRow = $result->fetch_assoc();
 
     // Write transfer dataset.
-    $conn->query("INSERT INTO `transfers` (`value`, `source`, `target`) VALUES ('$value', $sourceId, " . $targetRow["id"] . ")");
+    $conn->query("INSERT INTO `transfers` (`value`, `source`, `target`, `isScript`) VALUES ('$value', $sourceId, " . $targetRow["id"] . ", " . $isScript ? 1 : 0 . ")");
 }
 
 $command = $_GET["command"];
@@ -189,7 +190,11 @@ switch ($command) {
         die(ReturnCodes::Success);
         break;
     case 'send': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=send&sourceId=2&TargetLabel=WebDebug2&Value=Console.WriteLine(Console.Type.Debug,%22DebuggingShit%22)
-        WriteTransfer($sourceId, $conn);
+        WriteTransfer($sourceId, $conn, false);
+        die(ReturnCodes::Success);
+        break;
+    case 'sendScript': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=sendScript&sourceId=2&TargetLabel=WebDebug2&Value=Console.WriteLine(Console.Type.Debug,%22DebuggingShit%22)
+        WriteTransfer($sourceId, $conn, true);
         die(ReturnCodes::Success);
         break;
     default:
