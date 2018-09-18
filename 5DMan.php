@@ -130,7 +130,7 @@ function GetComputerTransfer($sourceId, $conn)
             // Parse value to lua string.
             $value = str_replace("\"", "\\\"", $row["value"]); // " -> \"
 
-            $resultStr .= "{source = \"" . $row["sourceLabel"] . "\", value=\"" . $value . "\", isScript=" . $row["isScript"] == 1 ? "true" : "false" . "},";
+            $resultStr .= "{source = \"" . $row["sourceLabel"] . "\", value=\"" . $value . "\", isScript=" . ($row["isScript"] == 1 ? "true" : "false") . "},";
         }
         // Remove last ","
         $resultStr = substr($resultStr, 0, strlen($resultStr) - 1);
@@ -161,7 +161,7 @@ function WriteTransfer($sourceId, $conn, $isScript)
     $targetRow = $result->fetch_assoc();
 
     // Write transfer dataset.
-    $conn->query("INSERT INTO `transfers` (`value`, `source`, `target`, `isScript`) VALUES ('$value', $sourceId, " . $targetRow["id"] . ", " . $isScript ? 1 : 0 . ")");
+    $conn->query("INSERT INTO `transfers` (`value`, `source`, `target`, `isScript`) VALUES ('$value', $sourceId, " . $targetRow["id"] . ", " . ($isScript ? 1 : 0) . ")");
 }
 
 $command = $_GET["command"];
@@ -189,11 +189,11 @@ switch ($command) {
         echo "result = {" . GetComputerTransfer($sourceId, $conn) . "}\n";
         die(ReturnCodes::Success);
         break;
-    case 'send': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=send&sourceId=2&TargetLabel=WebDebug2&Value=Console.WriteLine(Console.Type.Debug,%22DebuggingShit%22)
+    case 'send': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=send&sourceId=2&TargetLabel=WebDebug&Value=Console.WriteLine(Console.Type.Debug,"DebuggingShit")
         WriteTransfer($sourceId, $conn, false);
         die(ReturnCodes::Success);
         break;
-    case 'sendScript': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=sendScript&sourceId=2&TargetLabel=WebDebug2&Value=Console.WriteLine(Console.Type.Debug,%22DebuggingShit%22)
+    case 'sendScript': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=sendScript&sourceId=2&TargetLabel=WebDebug&Value=Console.WriteLine(Console.Type.Debug,"DebuggingShit")
         WriteTransfer($sourceId, $conn, true);
         die(ReturnCodes::Success);
         break;
