@@ -10,7 +10,7 @@ abstract class ReturnCodes
     const IdMissing = "returnCode = \"002 - No source id given.\"";
     const UnknownId = "returnCode = \"003 - Unknown source id. First register your client.\"";
 
-    const RegistrationMissingParameter = "returnCode = \"110 - One of the following parameters are missing: Label, X, Y, Z.\"";
+    const RegistrationMissingParameter = "returnCode = \"110 - One of the following parameters are missing: Label\"";
 
     const TransferMissingParameter = "returnCode = \"120 - One of the following parameters are missing: Value, Targetlabel.\"";
     const TransferTargetNotFound = "returnCode = \"121 - The target computer does not exist.\"";
@@ -48,10 +48,7 @@ function CreateDatabase($conn, $databaseName)
     (
         id int PRIMARY KEY AUTO_INCREMENT,
         label varchar(200),
-        serverIp varchar(60),
-        x double,
-        y double,
-        z double
+        serverIp varchar(60)
     );");
 
     // -- table: transfers
@@ -100,25 +97,21 @@ function CheckSourceId($sourceId, $conn)
 function RegisterComputer($conn)
 {
     // Not every parameter given -> die;
-    if (!(isset($_GET["Label"]) && isset($_GET["X"]) && isset($_GET["Y"]) && isset($_GET["Z"]))) {
+    if (!(isset($_GET["Label"]))) {
         die(ReturnCodes::RegistrationMissingParameter);
     }
 
     // Get parameters.
-    $x = $_GET["X"];
-    $y = $_GET["Y"];
-    $z = $_GET["Z"];
     $label = $_GET["Label"];
     $ip = isset($_SERVER['HTTP_CLIENT_IP']) ? $_SERVER['HTTP_CLIENT_IP'] : (isset($_SERVER['HTTP_X_FORWARDE‌​D_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : $_SERVER['REMOTE_ADDR']);
 
     // No registered computer found -> create new;
-    $selectSql = "SELECT * FROM computers 
-                  WHERE x = " . $x . " AND y = " . $y . " AND z = " . $z . " AND serverIp = '" . $ip . "' AND label = '" . $label . "' LIMIT 1;";
+    $selectSql = "SELECT * FROM computers WHERE serverIp = '" . $ip . "' AND label = '" . $label . "' LIMIT 1;";
     $result = $conn->query($selectSql);
     if ($result->num_rows == 0) {
         //TODO: Error if the label is already given.
         //TODO: Unregister command.
-        $conn->query("INSERT INTO `computers` (`label`, `serverIp`, `x`, `y`, `z`) VALUES ('$label', '$ip', $x, $y, $z)");
+        $conn->query("INSERT INTO `computers` (`label`, `serverIp`) VALUES ('$label', '$ip')");
         $result = $conn->query($selectSql);
     }
     $row = $result->fetch_assoc();
@@ -181,12 +174,13 @@ if ($command != "recreateDatabase" && $command != "register") {
 
 switch ($command) {
     case 'recreateDatabase': //TODO: Add "config" with setting to block this command.
+        ///http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=recreateDatabase
         // Drop old database.
         $conn->query("DROP DATABASE IF EXISTS " . $databaseName . ";");
         CreateDatabase($conn, $databaseName);
         die(ReturnCodes::Success);
         break;
-    case 'register': //http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=register&Label=WebDebug&X=0&Y=0&Z=0
+    case 'register': //http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=register&Label=WebDebug
         echo "myId = " . RegisterComputer($conn) . "\n";
         die(ReturnCodes::Success);
         break;
