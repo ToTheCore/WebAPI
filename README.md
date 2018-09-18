@@ -3,7 +3,7 @@ The PHP based Web API for the "WhitoutChunkLoading" communication.
 
 # API's
 Current API's
-##4D MAN
+##5D MAN
 
 ### Name 
 LAN = On one server, without cable, and with only one landing chunk per pc.
