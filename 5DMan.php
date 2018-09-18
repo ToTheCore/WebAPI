@@ -109,11 +109,11 @@ function RegisterComputer($conn)
     $y = $_GET["Y"];
     $z = $_GET["Z"];
     $label = $_GET["Label"];
-    $ip = $_SERVER['HTTP_CLIENT_IP'] ? $_SERVER['HTTP_CLIENT_IP'] : ($_SERVER['HTTP_X_FORWARDE‌​D_FOR'] ? $_SERVER['HTTP_X_FORWARDED_FOR'] : $_SERVER['REMOTE_ADDR']);
+    $ip = isset($_SERVER['HTTP_CLIENT_IP']) ? $_SERVER['HTTP_CLIENT_IP'] : (isset($_SERVER['HTTP_X_FORWARDE‌​D_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : $_SERVER['REMOTE_ADDR']);
 
     // No registered computer found -> create new;
     $selectSql = "SELECT * FROM computers 
-                  WHERE x = " . $x . " AND y = " . $y . " AND z = " . $z . " AND serverIp = \'" . $ip . "\' AND label = \'" . $label . "\' LIMIT 1;";
+                  WHERE x = " . $x . " AND y = " . $y . " AND z = " . $z . " AND serverIp = '" . $ip . "' AND label = '" . $label . "' LIMIT 1;";
     $result = $conn->query($selectSql);
     if ($result->num_rows == 0) {
         //TODO: Error if the label is already given.
@@ -132,13 +132,17 @@ function GetComputerTransfer($sourceId, $conn)
     if ($result->num_rows > 0) {
         // output data of each row
         while($row = $result->fetch_assoc()) {
-            $resultStr .= "{source = \"".$row["sourceLabel"]."\" \n value=\"".row["value"]."\"},";
+
+            // Parse value to lua string.
+            $value = str_replace("\"", "\\\"", $row["value"]); // " -> \"
+
+            $resultStr .= "{source = \"".$row["sourceLabel"]."\", value=\"".$value."\"},";
         }
         // Remove last ","
         $resultStr = substr($resultStr, 0, strlen($resultStr)-1);
 
         // Delete fetched transfers.
-        $conn->query("DELETE DELETE FROM transfers WHERE target = $sourceId");
+        $conn->query("DELETE FROM transfers WHERE target = $sourceId");
     }
     return $resultStr;
 }
@@ -155,7 +159,7 @@ function WriteTransfer($sourceId, $conn)
     $value = $_GET["Value"];
 
     // Get id of the TargetLabel
-    $result = $conn->query("SELECT * FROM computers WHERE label = \'" . $targetLabel . "\' LIMIT 1;");
+    $result = $conn->query("SELECT * FROM computers WHERE label = '$targetLabel' LIMIT 1;");
     // Target not found -> die;
     if ($result->num_rows == 0) {
         die(ReturnCodes::TransferTargetNotFound);
@@ -163,7 +167,7 @@ function WriteTransfer($sourceId, $conn)
     $targetRow = $result->fetch_assoc();
 
     // Write transfer dataset.
-    $conn->query("INSERT INTO `transfers` (`value`, `source`, `target`) VALUES (\'$value\', $sourceId, " . $targetRow["id"] . ")");
+    $conn->query("INSERT INTO `transfers` (`value`, `source`, `target`) VALUES ('$value', $sourceId, " . $targetRow["id"] . ")");
 }
 
 $command = $_GET["command"];
@@ -182,15 +186,15 @@ switch ($command) {
         CreateDatabase($conn, $databaseName);
         die(ReturnCodes::Success);
         break;
-    case 'register':
+    case 'register': //http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=register&Label=WebDebug&X=0&Y=0&Z=0
         echo "myId = " . RegisterComputer($conn) . "\n";
         die(ReturnCodes::Success);
         break;
-    case 'fetch':
+    case 'fetch': // http://localhost:8080/Github/ToTheCore/WebAPI/5DMan.php?command=fetch&sourceId=3
         echo "result = {" . GetComputerTransfer($sourceId, $conn) . "}\n";
         die(ReturnCodes::Success);
         break;
-    case 'send':
+    case 'send': // http://ruffo.ddns.net:8080/Github/ToTheCore/WebAPI/5DMan.php?command=send&sourceId=2&TargetLabel=WebDebug2&Value=Console.WriteLine(Console.Type.Debug,%22DebuggingShit%22)
         WriteTransfer($sourceId, $conn);
         die(ReturnCodes::Success);
         break;
